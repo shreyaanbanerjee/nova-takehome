@@ -51,7 +51,21 @@ def clean_num(s: str) -> Optional[Decimal]:
     if not s:
         return None
     try:
-        return Decimal(s.replace(",", "").strip())
+        cleaned = re.sub(r"[^\d.,\-]", "", str(s)).strip()
+        if not cleaned:
+            return None
+        if "," in cleaned and "." in cleaned:
+            if cleaned.rfind(",") > cleaned.rfind("."):
+                cleaned = cleaned.replace(".", "").replace(",", ".")
+            else:
+                cleaned = cleaned.replace(",", "")
+        elif "," in cleaned and "." not in cleaned:
+            parts = cleaned.split(",")
+            if len(parts) == 2 and len(parts[1]) == 2:
+                cleaned = cleaned.replace(",", ".")
+            else:
+                cleaned = cleaned.replace(",", "")
+        return Decimal(cleaned)
     except Exception:
         return None
 
@@ -254,10 +268,10 @@ class InvoiceParser:
             r"^(?P<desc>.+?)\s+"
             r"(?P<awb>[A-Z]{2}\d{8}(?:-H\d+)?)\s+"
             r"(?P<lane>[A-Z0-9]+-[A-Z0-9]+)\s+"
-            r"(?P<date>\d{1,2}\s+[A-Za-z]{3}\s+\d{4})\s+"
-            r"(?P<net>[\d,]+\.\d{2})\s+"
-            r"(?P<basis>[\d,]+(?:\.\d+)?\s*(?:kg|shpt|shp)?)\s+"
-            r"(?P<rate>[\d,]+(?:\.\d+)?%?)$"
+            r"(?P<date>\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})\s+"
+            r"(?P<net>(?:USD|INR|\$)?\s*[\d,]+\.\d{2})\s+"
+            r"(?P<basis>[\d,]+(?:\.\d+)?\s*(?:kg|shpt|shp|month|pcs|pc)?)\s+"
+            r"(?P<rate>(?:USD|INR|\$)?\s*[\d,]+(?:\.\d+)?%?)$"
         )
         m_fb = fb_pattern.match(line)
         if m_fb:
@@ -324,12 +338,12 @@ class InvoiceParser:
             return
 
         # We have an AWB line!
-        # Detect Lane (e.g. USE2-INE2, USC3-INS1, INE2-USW1)
-        m_lane = re.search(r"\b([A-Z]{3,4}\d-[A-Z]{3,4}\d)\b", line)
+        # Detect Lane (e.g. USE2-INE2, USC3-INS1, JFK-LHR, US-IN; must start with letters, never a date like 2035-03)
+        m_lane = re.search(r"\b([A-Z][A-Za-z0-9]{1,4}-[A-Z][A-Za-z0-9]{1,4})\b", line)
         lane = m_lane.group(1) if m_lane else None
 
-        # Detect Pickup date (YYYY-MM-DD or DD/MM/YYYY)
-        m_dt = re.search(r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})\b", line)
+        # Detect Pickup date (YYYY-MM-DD, DD/MM/YYYY, DD Mon YYYY, etc.)
+        m_dt = re.search(r"\b(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})\b", line)
         pickup_dt = parse_date(m_dt.group(1)) if m_dt else None
 
         # Detect Charge Type

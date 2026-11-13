@@ -224,27 +224,46 @@ class ContractParser:
         lines = page.split("\n")
         # Periods: Period P1: pickups 2030-04-02 to 2030-10-01
         for line in lines:
-            m_p = re.search(r"Period\s+(P\d+):\s*pickups\s*(\d{4}-\d{2}-\d{2})\s*to\s*(\d{4}-\d{2}-\d{2})", line)
+            m_p = re.search(
+                r"Period\s+(P\d+):\s*pickups\s*(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})\s*(?:to|through|-)\s*(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})",
+                line,
+                re.IGNORECASE,
+            )
             if m_p:
-                ct.rate_periods[m_p.group(1)] = (m_p.group(2), m_p.group(3))
+                d1 = parse_date(m_p.group(2))
+                d2 = parse_date(m_p.group(3))
+                if d1 and d2:
+                    ct.rate_periods[m_p.group(1)] = (d1, d2)
 
-        # Lane Weight band P1 rate P2 rate
+        # Lane Weight band P1 rate [P2 rate] [P3 rate]
         # e.g.: USC1-INW1 minimum charge 96.00 96.00
         # e.g.: USC1-INW1 0-44.5 kg 9.68 10.32
         for line in lines:
             line_str = line.strip()
             # Match lane code (e.g. USE2-INE2, USC1-INW1)
-            m_row = re.match(r"^([A-Z0-9]+-[A-Z0-9]+)\s+(minimum charge|\d+(?:\.\d+)?-\d+(?:\.\d+)?\s*kg|\d+\+\s*kg)\s+([\d\.]+)\s+([\d\.]+)$", line_str)
+            m_row = re.match(
+                r"^([A-Z0-9]+-[A-Z0-9]+)\s+(minimum charge|\d+(?:\.\d+)?-\d+(?:\.\d+)?\s*kg|\d+\+\s*kg)\s+([\d\.]+)(?:\s+([\d\.]+))?(?:\s+([\d\.]+))?$",
+                line_str,
+            )
             if m_row:
-                lane, band_str, p1_rate, p2_rate = m_row.groups()
+                lane = m_row.group(1)
+                band_str = m_row.group(2)
+                p1_rate = m_row.group(3)
+                p2_rate = m_row.group(4)
+                p3_rate = m_row.group(5)
                 min_w, max_w, is_min = parse_weight_band(band_str)
+                rates_dict = {"P1": Decimal(p1_rate)}
+                if p2_rate:
+                    rates_dict["P2"] = Decimal(p2_rate)
+                if p3_rate:
+                    rates_dict["P3"] = Decimal(p3_rate)
                 rb = RateBand(
                     lane=lane,
                     weight_band=band_str,
                     min_weight=min_w,
                     max_weight=max_w,
                     is_minimum_charge=is_min,
-                    rates_by_period={"P1": Decimal(p1_rate), "P2": Decimal(p2_rate)},
+                    rates_by_period=rates_dict,
                     raw_quote=line_str,
                     doc_id=doc_id,
                     page=p_idx,
@@ -382,10 +401,14 @@ class ContractParser:
 
             # Check for referenced missing documents
             # e.g.: 2. The Annex A rates for lane(s) USS2-INN1 are deleted and replaced as follows: Annex A rev 2 (attached) applies from 2035-06-04 to lane(s) USS2-INN1.
-            m_miss = re.search(r"replaced as follows:\s*([^(\n]+?)\s*\(attached\)\s*applies from\s*(\d{4}-\d{2}-\d{2})\s*to lane\(s\)\s*([A-Z0-9\-,\s]+)", page)
+            m_miss = re.search(
+                r"replaced as follows:\s*([^(\n]+?)\s*\(attached\)\s*applies from\s*(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})\s*to lane\(s\)\s*([A-Z0-9\-,\s]+)",
+                page,
+                re.IGNORECASE,
+            )
             if m_miss:
                 doc_name = m_miss.group(1).strip()
-                eff_date = m_miss.group(2).strip()
+                eff_date = parse_date(m_miss.group(2).strip()) or m_miss.group(2).strip()
                 lanes = [l.strip() for l in m_miss.group(3).split(",")]
                 ct.referenced_missing_docs.append({
                     "name": doc_name,

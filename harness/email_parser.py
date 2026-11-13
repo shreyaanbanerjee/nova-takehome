@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Optional, List, Dict, Tuple
 
 from harness.models import EmailWaiver, RateNotice, DueDateExtension
-from harness.invoice_parser import norm_invoice, parse_date, clean_num
+from harness.invoice_parser import norm_invoice, parse_date, clean_num, MONTHS
 from harness.sanitizer import contains_injection_attempt
 
 
@@ -102,14 +102,31 @@ class EmailParser:
 
                 # Detect target charge type
                 charge = None
-                for c in ["Delivery fee", "Security surcharge", "Storage", "Screening fee", "Dangerous goods"]:
+                for c in [
+                    "Delivery fee",
+                    "Security surcharge",
+                    "Storage",
+                    "Screening fee",
+                    "Dangerous goods",
+                    "Dry ice",
+                    "Account fee",
+                    "Handling fee",
+                    "Fuel surcharge",
+                    "Customs",
+                    "Disbursement",
+                ]:
                     if c.lower() in line_str.lower():
                         charge = c
                         break
 
-                # Detect month (e.g. 2035-05)
+                # Detect month (e.g. 2035-05, May 2035)
                 m_m = re.search(r"\b(\d{4}-\d{2})\b", line_str)
                 month = m_m.group(1) if m_m else None
+                if not month:
+                    m_named = re.search(r"\b([A-Za-z]+)\s+(\d{4})\b", line_str)
+                    if m_named and m_named.group(1).lower()[:3] in MONTHS:
+                        m_idx = MONTHS[m_named.group(1).lower()[:3]]
+                        month = f"{m_named.group(2)}-{m_idx:02d}"
 
                 scope = "single_shipment"
                 if month and not awb:
@@ -146,9 +163,14 @@ class EmailParser:
             contract_id = m_cid.group(1).split("/")[0]
 
         eff_from, eff_to = None, None
-        m_dates = re.search(r"effective\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})", full_text)
+        m_dates = re.search(
+            r"effective\s+(?:from\s+)?(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})\s+(?:to|until|through|-)\s+(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})",
+            full_text,
+            re.IGNORECASE,
+        )
         if m_dates:
-            eff_from, eff_to = m_dates.groups()
+            eff_from = parse_date(m_dates.group(1))
+            eff_to = parse_date(m_dates.group(2))
 
         # Parse individual rates
         # e.g.: USC3-INS1 45-99.5 kg: 5.03 USD
@@ -184,10 +206,14 @@ class EmailParser:
         for line in lines:
             line_str = line.strip()
             # e.g.: We extend the due date of invoice TX-US-2035-0202 to 2035-05-07.
-            m = re.search(r"extend\s+the\s+due\s+date\s+of\s+invoice\s+([A-Z0-9\-]+)\s+to\s+(\d{4}-\d{2}-\d{2})", line_str, re.IGNORECASE)
+            m = re.search(
+                r"extend(?:ed)?\s+the\s+due\s+date\s+of\s+(?:invoice\s+)?([A-Z0-9\-]+)\s+to\s+(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}[-\s]+[A-Za-z]{3,}[-\s]+\d{4})",
+                line_str,
+                re.IGNORECASE,
+            )
             if m:
                 inv_id = norm_invoice(m.group(1))
-                new_due = m.group(2)
+                new_due = parse_date(m.group(2)) or m.group(2)
                 de = DueDateExtension(
                     sender_name=sender_name,
                     sender_email=sender_email,
