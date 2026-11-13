@@ -1,4 +1,4 @@
-"""Action gating, safety guardrails, and calibrated confidence scoring."""
+"""Action gating and confidence scoring."""
 from __future__ import annotations
 
 from decimal import Decimal

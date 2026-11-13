@@ -1,4 +1,4 @@
-"""Prompt injection isolation and document content sanitization."""
+"""Sanitization helpers to isolate untrusted text."""
 from __future__ import annotations
 
 import re

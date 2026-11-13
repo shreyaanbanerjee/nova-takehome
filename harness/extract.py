@@ -1,6 +1,5 @@
 """Document reader and text extraction engine.
-Replicates and extends grader/extract.py to guarantee 100% quote matching fidelity,
-with OCR support for scanned PDFs and Claude Vision fallback.
+Replicates grader/extract.py for exact quote matching, with OCR fallback for scanned PDFs.
 """
 from __future__ import annotations
 

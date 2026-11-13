@@ -1,4 +1,4 @@
-"""Comprehensive freight audit and reasoning engine covering all 6 problem classes."""
+"""Freight invoice auditor implementing the rules in GLOSSARY.md."""
 from __future__ import annotations
 
 import re

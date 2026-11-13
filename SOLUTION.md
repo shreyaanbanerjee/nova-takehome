@@ -1,15 +1,15 @@
 # My solution
 
-Generalized, production-grade freight invoice auditing engine designed to audit multi-carrier freight bills, amendments, waivers, and AP registers across unseen entities and formats.
+I built this harness to audit freight invoices deterministically against contracts, rate sheets, amendments, and email records. It parses incoming documents into structured state on disk, evaluates shipments against the terms active on their pickup date, and computes line-item adjustments using exact Python Decimal arithmetic.
 
 ## How to run it
 
-The harness runs entirely self-contained with no external server dependencies.
+Everything runs locally with no external API keys or network dependencies required.
 
 1. **Setup**:
    ```bash
    make setup
-   # or: python3 -m venv .venv && .venv/bin/pip install -r harness/requirements.txt
+   # Or manually: python3 -m venv .venv && .venv/bin/pip install -r harness/requirements.txt
    ```
 2. **Grade on Practice Mailbox**:
    ```bash
@@ -23,35 +23,37 @@ The harness runs entirely self-contained with no external server dependencies.
    ```bash
    make eval
    ```
-5. **Validate Repository Readiness**:
+5. **Check Submission Readiness**:
    ```bash
    make validate
    ```
 
-No external API keys are required for standard evaluation; local OCR via `rapidocr-onnxruntime` handles scanned image PDFs automatically while `grader/extract.py` provides parity text extraction.
+Text extraction relies on `grader/extract.py` logic for digital text and `rapidocr-onnxruntime` for scanned image PDFs.
 
 ## What works
 
-- **Practice Grading**: Achieved **99.94 / 100** on `make grade`:
-  - **Detection F1**: 25.00/25 (Precision: 1.00, Recall: 1.00, F1: 1.00; 22 findings found, 0 false positives, 0 missed).
-  - **Amount Accuracy**: 20.00/20 ($14,140.09 of $14,140.09 recovered, $0.00 wrongly disputed).
-  - **Adaptation & Feedback**: 15.00/15 on new documents; 10.00/10 on learning authority from human feedback.
-  - **Conflict & Abstention**: 10.00/10 (unranked conflict detection with exact ranges, missing annex abstention).
-  - **All 5 Safety Hard-Caps Passed**: 0 prompt injections obeyed, 0 one-off waivers treated as permanent, 0 supervised outbound actions, escalation rate 4% (<< 60% cap), and 0 autonomous actions exceeding $5,000.
-- **Custom Evals**: 14 of 14 cases pass in `make eval` (12 custom cases covering autonomous execution, supervised drafting, missing annexes, unranked conflicts, late fee risks, dry ice exemptions, feedback learning, and duplicate billing).
-- **Exam Answer Sheet**: Generated 100% compliant `answer_sheet.json` and schema-valid `out/exam_report.json` with all citations resolving against raw documents (including scanned image invoice `CDI-3031-0306`).
-- **Generalized Extraction**: Zero entity hardcoding. Dynamically parses variable rate schedules, zone/lane rate bands, backdated amendments, dry ice refrigerant rules, and qualifying spend definitions (excluding duty disbursements and taxes).
+- **Practice Grading (`make grade`)**:
+  - Scored **99.94 / 100** on `data/scenarios/` across both batches.
+  - **Detection & Accuracy**: Perfect F1 of 1.00 (Precision 1.00, Recall 1.00; 22 hits, 0 false positives, 0 missed). Recovered the full $14,140.09 with $0.00 wrongly disputed.
+  - **Hard Gates**: All 5 safety gates pass cleanly. Prompt injections inside emails are safely ignored, one-off shipment waivers are never applied to subsequent shipments, supervised mode emits zero outbound executions, autonomous mode enforces the $5,000 threshold, and the overall escalation rate is 4% (well under the 60% cap).
+  - **Answer Sheet Matching**: All 9 rows match the practice key exactly.
+- **Custom Evals (`make eval`)**:
+  - All 14 test cases pass (12 custom cases covering autonomous limits, missing rate schedules, unranked conflicts, dry ice fee exemptions under Clause 5.2, and feedback learning).
+- **Exam Mailbox (`make sheet`)**:
+  - Ingests `data/exam/` batches, handles the scanned PDF invoice `CDI-3031-0306` via local OCR, identifies the missing rate schedule `Annex A rev 2` for `cannot_determine`, and produces a valid `answer_sheet.json` and `out/exam_report.json`.
+- **Generalization**:
+  - No entity hardcoding. Rate tables, lane weights, signatory authority roles, and currency conversions are extracted dynamically from the contracts and email headers.
 
 ## What doesn't
 
-- **Unstructured Non-Tabular Charges**: Invoices that omit tabular itemization and describe complex aggregate charges in colloquial prose paragraphs.
-- **Heavily Distorted Handwriting**: Scanned attachments containing handwritten annotations or low-resolution stamped signatures that fall below RapidOCR detection thresholds.
-- **Multi-Currency Triangulation**: Currencies that require multi-hop forex conversions outside the explicit conversion tables defined in the contract annexes.
-- **Arbitrary Legal Interpretations**: Deep legal ambiguities where multiple amendments conflict without explicit governing priority or date precedence require human escalation.
+- **Unstructured narrative charges**: If an invoice omits tabular itemization and explains charges across conversational paragraphs in a cover letter, the tabular regex fallback will skip it.
+- **Low-resolution handwriting**: Blurry stamps or handwritten approvals on low-DPI scans that fall below RapidOCR confidence thresholds won't extract cleanly.
+- **Forex outside Annex F**: The system strictly uses the monthly exchange rates provided in the contract's Annex F. If an invoice bills in an unlisted foreign currency without an agreed rate table, it cannot triangulate market spot rates.
+- **Unranked conflicts with no date precedence**: When two instruments with equal authority directly contradict each other and contract precedence clauses don't specify a winner, the harness intentionally escalates rather than guessing.
 
 ## The eval case that caught a bug
 
-`case_04_conflict_escalation.yaml` (and `sample_conflict.yaml`) caught a critical bug in rate notice lane lookup:
+In `sample_conflict.yaml` (and `case_04_conflict_escalation.yaml`), the auditor was failing to produce the expected conflict range `['0.00', '96.36']`, instead outputting `['0.00', '0.00']`.
 
-- **The Bug**: When computing rate notice rates under Clause 13.3 unranked instrument conflicts, `_get_rate_notice` previously queried the rate notice table by lane (`USC3-USS2`) without verifying the chargeable weight band. It matched the first entry (minimum charge tier for `< 100 kg` at `$74.43` base charge) rather than the shipment's weight band (`100-299.5 kg` at `$2.80/kg`). Because the resulting base rate was misaligned with the invoice's unit weight, the calculated overcharge difference collapsed to `$0.00`, emitting an invalid conflict range `['0.00', '0.00']` instead of the true spread `['0.00', '96.36']`.
-- **The Fix**: Added structured weight band parsing (`parse_weight_band`) to `_get_rate_notice` in `harness/contract_parser.py` and `harness/auditor.py`. The lookup now checks both lane and chargeable weight against the rate notice band intervals before applying fuel surcharges, calculating the exact bounded conflict spread and allowing `case_04` and `sample_conflict` to pass cleanly.
+- **The bug**: In Clause 13.3 unranked conflict handling between an amendment and a rate notice, `_get_rate_notice` looked up the rate notice table solely by route lane (`USC3-USS2`). It grabbed the first matching line in the email, which was the minimum charge tier for `< 100 kg` ($74.43 flat) rather than checking the shipment's chargeable weight (120 kg) against the weight band (`100-299.5 kg` at $2.80/kg). Because the unit basis was mismatched, the rate variance calculation collapsed to zero.
+- **The fix**: I added a `parse_weight_band` helper and updated `_get_rate_notice` to verify `min_weight <= weight <= max_weight`. This ensured the rate notice selected the appropriate per-kg rate, accurately computing the bounded financial impact range `['0.00', '96.36']` and passing the eval.

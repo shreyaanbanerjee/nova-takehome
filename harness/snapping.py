@@ -1,4 +1,4 @@
-"""Quote verification and snapping engine against raw document texts."""
+"""Quote verification and snapping against raw document text."""
 from __future__ import annotations
 
 import re

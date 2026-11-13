@@ -1,6 +1,4 @@
-"""Generalized freight invoice auditing harness.
-Implements ingest, report, and feedback commands according to GLOSSARY.md.
-"""
+"""CLI entrypoint for ingest, report, and feedback commands."""
 from __future__ import annotations
 
 import argparse
