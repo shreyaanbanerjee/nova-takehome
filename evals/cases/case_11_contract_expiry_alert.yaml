@@ -1,0 +1,13 @@
+name: contract ending within 60 days produces expiry alert
+mailbox: data/examples/expiry/docs
+as_of: '2034-02-28'
+mode: supervised
+expect:
+  key:
+    class: expiry
+    contract_id: TBX-US-EXP-E24
+  verdict: finding
+  deadline: '2034-03-20'
+  action: internal:alert
+why: initial term ends within 60 days of as_of date
+

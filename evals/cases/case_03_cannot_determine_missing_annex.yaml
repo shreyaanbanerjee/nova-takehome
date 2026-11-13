@@ -1,0 +1,13 @@
+name: cannot determine when referenced rate schedule is missing
+mailbox: data/scenarios
+as_of: '2035-09-30'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2035-0237
+    class: overcharge
+  verdict: cannot_determine
+  missing_doc: Annex A rev 2
+  action: draft:request_document
+why: amendment deletes Annex A and references Annex A rev 2 which is missing from mailbox
+

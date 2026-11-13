@@ -1,0 +1,13 @@
+name: duplicate invoice billed after earlier invoice was paid
+mailbox: data/examples/duplicate/docs
+as_of: '2033-08-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2033-5511
+    class: duplicate
+  verdict: finding
+  amount_usd: '1259.23'
+  action: draft:dispute
+why: invoice TX-US-2033-5511 was already paid in batch 1 and billed again
+

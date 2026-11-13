@@ -1,0 +1,13 @@
+name: late fee billed on invoice paid by extended due date is not owed
+mailbox: data/scenarios
+as_of: '2035-09-30'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2035-0265
+    class: late_fee_not_owed
+  verdict: finding
+  amount_usd: '39.66'
+  action: draft:dispute
+why: under clause 10.5 carrier authorized extension of due date and payment was made on or before extended date
+

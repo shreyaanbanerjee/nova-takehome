@@ -1,0 +1,14 @@
+name: unranked conflict between rate notice and amendment escalates with range
+mailbox: data/scenarios
+as_of: '2035-09-30'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2035-0242
+    class: overcharge
+  verdict: conflict
+  amount_range:
+  - '0.00'
+  - '96.36'
+  action: escalate
+why: clause 13.3 unranked instruments neither prevails automatically so human must resolve

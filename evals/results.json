@@ -1,0 +1,93 @@
+{
+ "harness": "harness/harness.py",
+ "passed": 14,
+ "total": 14,
+ "your_cases": 12,
+ "score": 1.0,
+ "cases": [
+  {
+   "case": "case_01_autonomous_execute.yaml",
+   "name": "autonomous mode under 5000 executes dispute",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_02_supervised_draft_only.yaml",
+   "name": "supervised mode must only draft dispute never execute",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_03_cannot_determine_missing_annex.yaml",
+   "name": "cannot determine when referenced rate schedule is missing",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_04_conflict_escalation.yaml",
+   "name": "unranked conflict between rate notice and amendment escalates with range",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_05_late_fee_risk.yaml",
+   "name": "unpaid invoice due within 14 days incurs late fee risk",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_06_dry_ice_dg_exemption.yaml",
+   "name": "dry ice refrigerant exemption from dangerous goods fee",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_07_feedback_rate_notice.yaml",
+   "name": "rate notice authority learned from feedback applies to subsequent batch",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_08_late_fee_extended_due_date.yaml",
+   "name": "late fee billed on invoice paid by extended due date is not owed",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_09_duplicate_billing.yaml",
+   "name": "duplicate invoice billed after earlier invoice was paid",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_10_cashback_rebate.yaml",
+   "name": "quarterly volume rebate owed on qualifying spend",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_11_contract_expiry_alert.yaml",
+   "name": "contract ending within 60 days produces expiry alert",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "case_12_waived_charge_billed.yaml",
+   "name": "charge waived by authorized signatory billed on invoice",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "sample_conflict.yaml",
+   "name": "amendment and rate notice disagree",
+   "pass": true,
+   "diff": []
+  },
+  {
+   "case": "sample_overcharge.yaml",
+   "name": "wrong rate on one freight line",
+   "pass": true,
+   "diff": []
+  }
+ ]
+}

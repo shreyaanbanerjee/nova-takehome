@@ -1,0 +1,14 @@
+name: unpaid invoice due within 14 days incurs late fee risk
+mailbox: data/scenarios
+as_of: '2035-09-30'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2035-0252
+    class: late_fee_risk
+  verdict: finding
+  amount_usd: '19.61'
+  deadline: '2035-10-06'
+  action: internal:payment_reminder
+why: open payable due in 6 days will incur 1.98 percent late fee unless reminder triggers payment
+

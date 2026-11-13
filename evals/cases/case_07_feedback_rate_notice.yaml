@@ -1,0 +1,15 @@
+name: rate notice authority learned from feedback applies to subsequent batch
+mailbox: data/scenarios
+feedback:
+  batch_01: data/scenarios/feedback/W1_batch_01.json
+as_of: '2035-09-30'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2035-0256
+    class: overcharge
+  verdict: finding
+  amount_usd: '45.51'
+  action: draft:dispute
+why: feedback confirms rate notice authority so rate notice applies to batch 2 invoice
+

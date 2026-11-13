@@ -1,0 +1,13 @@
+name: dry ice refrigerant exemption from dangerous goods fee
+mailbox: data/scenarios
+as_of: '2035-05-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: TX-US-2035-0198
+    class: overcharge
+  verdict: finding
+  amount_usd: '124.02'
+  action: draft:dispute
+why: dry ice used solely as refrigerant does not attract dangerous goods fee under clause 5.2
+
