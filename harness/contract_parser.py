@@ -13,19 +13,7 @@ from harness.models import (
     CashbackTier,
     AuthorisedPerson,
 )
-
-
-def parse_date(s: str) -> Optional[str]:
-    """Parse YYYY-MM-DD or DD/MM/YYYY into YYYY-MM-DD."""
-    s = s.strip()
-    m_iso = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", s)
-    if m_iso:
-        return s
-    m_slash = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", s)
-    if m_slash:
-        d, m, y = m_slash.groups()
-        return f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
-    return None
+from harness.invoice_parser import parse_date
 
 
 def parse_weight_band(band_str: str) -> tuple[Decimal, Decimal, bool]:

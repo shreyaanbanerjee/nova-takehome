@@ -343,9 +343,16 @@ class Auditor:
             return
 
         if has_cannot_determine:
-            pricing_mgr = self._get_schedule1_contact(contract, "rates", party=contract.get("carrier") or "TBX-US")
+            pricing_mgr = self._get_schedule1_contact(contract, "rates")
             if not pricing_mgr:
-                pricing_mgr = self._get_schedule1_contact(contract, "rates")
+                pricing_mgr = self._get_schedule1_contact(contract, "notices")
+            all_aps = contract.get("authorised_persons", [])
+            first_ap = all_aps[0] if all_aps else {}
+            carrier_party = contract.get("carrier") or "Carrier"
+            holder_party = (pricing_mgr.get("party") if pricing_mgr else first_ap.get("party")) or carrier_party
+            holder_person = (pricing_mgr.get("name") if pricing_mgr else first_ap.get("name")) or "Key Account Manager"
+            holder_role = (pricing_mgr.get("title") if pricing_mgr else first_ap.get("title")) or "Pricing Manager"
+
             item = {
                 "id": f"overcharge:{inv_id}",
                 "class": "overcharge",
@@ -361,9 +368,9 @@ class Auditor:
                 "missing_doc": {
                     "name": missing_doc_info["name"],
                     "holder": {
-                        "party": pricing_mgr.get("party") if pricing_mgr else "TBX-US",
-                        "person": pricing_mgr.get("name") if pricing_mgr else "Fintan Corrigan",
-                        "role": pricing_mgr.get("title") if pricing_mgr else "Pricing Manager",
+                        "party": holder_party,
+                        "person": holder_person,
+                        "role": holder_role,
                     },
                 },
                 "supersedes": [],
@@ -526,6 +533,9 @@ class Auditor:
                     if not orig_exists and has_auth:
                         # Cannot determine!
                         kam = self._get_schedule1_contact(contract, "notices")
+                        all_aps = contract.get("authorised_persons", [])
+                        first_ap = all_aps[0] if all_aps else {}
+                        carrier_party = contract.get("carrier") or "Carrier"
                         item = {
                             "id": f"waived_but_billed:{inv_id}",
                             "class": "waived_but_billed",
@@ -541,9 +551,9 @@ class Auditor:
                             "missing_doc": {
                                 "name": "original waiver email",
                                 "holder": {
-                                    "party": kam.get("party") if kam else "TBX-US",
-                                    "person": kam.get("name") if kam else "Key Account Manager",
-                                    "role": kam.get("title") if kam else "Key Account Manager",
+                                    "party": (kam.get("party") if kam else first_ap.get("party")) or carrier_party,
+                                    "person": (kam.get("name") if kam else first_ap.get("name")) or "Key Account Manager",
+                                    "role": (kam.get("title") if kam else first_ap.get("title")) or "Key Account Manager",
                                 },
                             },
                             "supersedes": [],
@@ -748,15 +758,14 @@ class Auditor:
 
             # Group invoices by calendar quarter
             quarters: dict[str, list[dict]] = {}
+            contract_curr = contract.get("currency") or ("INR" if "-IN" in cid else "USD")
             for inv in all_invoices:
                 cref = inv.get("contract_ref")
                 if cref:
                     if cref != cid:
                         continue
                 else:
-                    if cid.startswith("TBX-US") and inv.get("currency") != "USD":
-                        continue
-                    if cid.startswith("TBX-IN") and inv.get("currency") != "INR":
+                    if inv.get("currency") and inv.get("currency") != contract_curr:
                         continue
 
                 inv_dt = inv.get("invoice_date", "")

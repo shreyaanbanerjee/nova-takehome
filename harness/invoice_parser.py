@@ -20,21 +20,28 @@ MONTHS = {
 
 
 def parse_date(s: str) -> Optional[str]:
-    """Parse YYYY-MM-DD, DD/MM/YYYY, or DD Mon YYYY into YYYY-MM-DD."""
+    """Parse YYYY-MM-DD, DD/MM/YYYY, DD Mon YYYY, Mon DD, YYYY into YYYY-MM-DD."""
     if not s:
         return None
     s = s.strip()
-    m_iso = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", s)
+    m_iso = re.match(r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$", s)
     if m_iso:
-        return s
-    m_slash = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", s)
+        y, m, d = m_iso.groups()
+        return f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
+    m_slash = re.match(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$", s)
     if m_slash:
         d, m, y = m_slash.groups()
         return f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
-    m_mon = re.match(r"^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$", s)
+    m_mon = re.match(r"^(\d{1,2})[-/\s]+([A-Za-z]+)[-/\s,]+(\d{4})$", s)
     if m_mon:
         d, m_str, y = m_mon.groups()
-        m_num = MONTHS.get(m_str.lower())
+        m_num = MONTHS.get(m_str.lower()[:3])
+        if m_num:
+            return f"{int(y):04d}-{m_num:02d}-{int(d):02d}"
+    m_mon_first = re.match(r"^([A-Za-z]+)\s+(\d{1,2})[,\s]+(\d{4})$", s)
+    if m_mon_first:
+        m_str, d, y = m_mon_first.groups()
+        m_num = MONTHS.get(m_str.lower()[:3])
         if m_num:
             return f"{int(y):04d}-{m_num:02d}-{int(d):02d}"
     return None
